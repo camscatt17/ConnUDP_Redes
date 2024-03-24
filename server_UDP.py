@@ -1,6 +1,7 @@
 #!/usr/bin/env python3  
 import socket
 import hashlib
+import os
 
 HOST = 'localhost'
 PORT = 9999
@@ -52,9 +53,24 @@ def checksumSHA256(data):
 def send_file(fileName, adress):
     try:
         with open(fileName, 'rb') as f:
-            while data := f.read(1024):
+            #Cálculo do tamanho total do arquivo
+            fileSize = os.path.getsize(fileName)
+            #Inicializa o contador de pacotes
+            packetNumber = 1
+
+            while True:
+                #Lê um pedaço do arquivo
+                data = f.read(BUFFER)
+                
+                #Se não houver mais dados, termina o loop
+                if not data:
+                    break 
+                
                 # Calcula checksum com SHA-256
                 checksum = checksumSHA256(data)
+                
+                #Formata o pacote incluindo o número do pacote
+                packet = f"{packetNumber:04d}".encode() + b"|" + checksum.encode() + b"|" + data
 
                 check = 'NOK'
 
@@ -65,7 +81,10 @@ def send_file(fileName, adress):
                     check = check[0].decode('utf-8')
                     if check == 'NOK':
                         print('NOK recebido. Reenviando parte do arquivo.')
-    
+                
+                # Incrementa o número do pacote para o próximo
+                packetNumber += 1
+
     #Se o arquivo não existir
     except FileNotFoundError as msg:
         print("Arquivo não encontrado:" + str(msg + "\n"))
