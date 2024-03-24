@@ -31,23 +31,36 @@ def main():
     socketUDP = create_socket()
     server_address = (SERVER_IP, SERVER_PORT)
 
-    filename = "lorem.txt"
     recvFile = 'recvFile.txt'
     backupFile = 'bckFile.txt'
+    package_count = 0
+    arquivo_completo = ''
+
+    arquivo = input('Insira o nome do arquivo + extensão \".txt\"\n')
+    bytesEnviados = str.encode('GET ' + arquivo)
+
+    # Envia a mensagem de solicitação para o servidor
+    client_socketUDP.sendto(bytesEnviados, server_address)
 
     try:
-        # Envia a mensagem de solicitação para o servidor
-        socketUDP.sendto(f"GET {filename}".encode(), server_address)
+        # # Envia a mensagem de solicitação para o servidor
+        # client_socketUDP.sendto(bytesEnviados, server_address)
         
         # Recebe os dados do servidor em blocos e os imprime
         with open(recvFile, 'wb') as recv_file, open (backupFile, 'wb') as bck_file:   
             while True:
                 data, _ = socketUDP.recvfrom(BUFFER)
                 if not data:
+                    print('Arquivo finalizado!')
                     break  # Se não há mais dados, sai do loop
+                if data.startswith('ERRO!'.encode('utf-8')):
+                    print(data.decode('utf-8'))
+                    exit()
                 
                 bck_file.write(data)
                 
+                package_count += 1
+
                 #Opção para o usuário descartar uma parte do arquivo (Simular perda de pacotes)
                 discard = input("Deseja descartar uma parte do arquivo? (s/n): ")
                 if discard.lower() == 's':
@@ -58,9 +71,15 @@ def main():
                     recv_file.write(data_discarded)
 
                 # Verifica o checksum e solicita reenvio em caso de falha
-                if not confere_checksum(data):
-                    print("Erro de checksum. Requisitando reenvio.")
-                    continue
+                if confere_checksum(data):
+                    arquivo_completo += data[32:].decode('utf-8')
+                    print(f'Pacote {package_count} enviado!')
+                    check = 'OK'.encode('utf-8')
+                else:
+                    print(f'Erro de checksum no pacote {package_count}. Uma parte do arquivo foi perdida.\nRequisitando reenvio.')
+                    check = 'NOK'.encode('utf-8')
+    
+                socketUDP.sendto(check, server_address)
             
             print(f'Dados originais escritos no arquivo {recvFile}')
             print(f'Dados descartados escritos no arquivo de backup {backupFile}')

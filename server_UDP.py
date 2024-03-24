@@ -6,7 +6,7 @@ import os
 HOST = 'localhost'
 PORT = 9999
 
-BUFFER = 50
+BUFFER = 1024
 
 #Create a Socket (connect two computers)
 def create_socket():
@@ -57,10 +57,7 @@ def send_file(fileName, adress):
                 # Calcula checksum com SHA-256
                 checksum = checksumSHA256(data)
 
-                for i in range(0, len(data), BUFFER):
-                    chunk = data[i:i+BUFFER]
-
-                    check = 'NOK'
+                check = 'NOK'
 
                 #Verifica se o pacote foi enviado corretamente
                 while check == 'NOK':
