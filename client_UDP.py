@@ -32,21 +32,39 @@ def main():
     server_address = (SERVER_IP, SERVER_PORT)
 
     filename = "lorem.txt"
-    newFile = 'recvFile.txt'
+    recvFile = 'recvFile.txt'
+    backupFile = 'bckFile.txt'
 
     try:
         # Envia a mensagem de solicitação para o servidor
         socketUDP.sendto(f"GET {filename}".encode(), server_address)
         
         # Recebe os dados do servidor em blocos e os imprime
-        with open(newFile, 'wb') as file_recv:   
+        with open(recvFile, 'wb') as recv_file, open (backupFile, 'wb') as bck_file:   
             while True:
                 data, _ = socketUDP.recvfrom(BUFFER)
                 if not data:
                     break  # Se não há mais dados, sai do loop
-                file_recv.write(data)
-            print(f'Dados escritos no arquivo {newFile}')
-        
+                
+                bck_file.write(data)
+                
+                #Opção para o usuário descartar uma parte do arquivo (Simular perda de pacotes)
+                discard = input("Deseja descartar uma parte do arquivo? (s/n): ")
+                if discard.lower() == 's':
+                    percent_to_discard = float(input("Informe a porcentagem do arquivo a ser descartada (0-100): "))
+                    bytes_to_discard = int(len(data) * (percent_to_discard / 100))
+                    data_discarded = data[:bytes_to_discard]
+                    data = data[bytes_to_discard:]
+                    recv_file.write(data_discarded)
+
+                # Verifica o checksum e solicita reenvio em caso de falha
+                if not confere_checksum(data):
+                    print("Erro de checksum. Requisitando reenvio.")
+                    continue
+            
+            print(f'Dados originais escritos no arquivo {recvFile}')
+            print(f'Dados descartados escritos no arquivo de backup {backupFile}')
+    
     except Exception as e:
         print(f"Ocorreu um erro durante a comunicação com o servidor: {e}")
     
