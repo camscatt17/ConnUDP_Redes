@@ -36,7 +36,8 @@ def get_commands(data, adress):
 
     if dataString.startswith('GET'):
         fileName = dataString[4:]
-        send_file(fileName, adress)
+        packetNumber = 0
+        send_file(fileName, adress, packetNumber)
 
 def checksumSHA256(data):
     #Inicializa um objeto hashlib com o algoritmo SHA-256
@@ -50,33 +51,39 @@ def checksumSHA256(data):
     return checksum
     
 #Envia arquivo solicitado pelo cliente
-def send_file(fileName, adress):
-    try:
-        with open(fileName, 'rb') as f:
-            while data := f.read(1024):
-                # Calcula checksum com SHA-256
-                checksum = checksumSHA256(data)
+def send_file(fileName, adress, packetNumber):
+    if not os.path.isfile(fileName):
+        print("Arquivo nao encontrado: " + fileName)
+        socketUDP.sendto(b"1", adress)
+    else:
+        try:
+            with open(fileName, 'rb') as f:
+                while data := f.read(1024):
+                    # Calcula checksum com SHA-256
+                    checksum = checksumSHA256(data)
 
-                check = 'NOK'
+                    check = 'NOK'
 
-                #Verifica se o pacote foi enviado corretamente
-                while check == 'NOK':
-                    socketUDP.sendto(checksum.encode('utf-8') + data, adress)
-                    check = socketUDP.recvfrom(BUFFER)
-                    check = check[0].decode('utf-8')
-                    if check == 'NOK':
-                        print('NOK recebido. Reenviando parte do arquivo.')
-                
-                # Incrementa o número do pacote para o próximo
-                packetNumber += 1
+                    #Verifica se o pacote foi enviado corretamente
+                    while check == 'NOK':
+                        socketUDP.sendto(data, adress)
+                        socketUDP.sendto(checksum.encode('utf-8'), adress)
+                        check = socketUDP.recvfrom(BUFFER)
+                        check = check[0].decode('utf-8')
+                        if check == 'NOK':
+                            print('NOK recebido. Reenviando parte do arquivo.')
+                    
+                    # Incrementa o número do pacote para o próximo
+                    packetNumber += 1
 
-    #Se o arquivo não existir
-    except FileNotFoundError as msg:
-        print("Arquivo não encontrado:" + str(msg + "\n"))
-        
-    # Mensagem de finalização do arquivo
-    print(f'Arquivo {fileName} enviado para {adress}')
-    socketUDP.sendto(b'', adress)
+        #Se o arquivo não existir
+        except FileNotFoundError as msg:
+            print("Deu algum error:" + str(msg + "\n"))
+            socketUDP.sendto(b"ERRO!", adress)
+            
+        # Mensagem de finalização do arquivo
+        print(f'Arquivo {fileName} enviado para {adress}')
+        socketUDP.sendto(b'', adress)
 
 def main():
     socketUDP = create_socket()
