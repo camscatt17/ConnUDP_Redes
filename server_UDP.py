@@ -3,7 +3,7 @@ import socket
 import hashlib
 import os
 
-HOST = 'localhost'
+HOST = '0.0.0.0'
 PORT = 9999
 
 BUFFER = 1024
