@@ -52,13 +52,17 @@ def checksumSHA256(data):
     
 #Envia arquivo solicitado pelo cliente
 def send_file(fileName, adress, packetNumber):
+    packge_num = 0
+
     if not os.path.isfile(fileName):
         print("Arquivo nao encontrado: " + fileName)
         socketUDP.sendto(b"1", adress)
     else:
         try:
             with open(fileName, 'rb') as f:
-                while data := f.read(1024):
+                while data := f.read(BUFFER):
+                    packge_num += 1
+
                     # Calcula checksum com SHA-256
                     checksum = checksumSHA256(data)
 
@@ -66,8 +70,7 @@ def send_file(fileName, adress, packetNumber):
 
                     #Verifica se o pacote foi enviado corretamente
                     while check == 'NOK':
-                        socketUDP.sendto(data, adress)
-                        socketUDP.sendto(checksum.encode('utf-8'), adress)
+                        socketUDP.sendto(checksum.encode('utf-8') + ";".encode('utf-8') + str(packge_num).encode('utf-8') + ">".encode('utf-8') + data, adress)
                         check = socketUDP.recvfrom(BUFFER)
                         check = check[0].decode('utf-8')
                         if check == 'NOK':

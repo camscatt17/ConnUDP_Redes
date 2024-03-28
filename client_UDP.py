@@ -1,10 +1,14 @@
 #!/usr/bin/env python3  
+
+# Arrumar para colocar o checksum com o dado e a numeracao do pacote
+# Pensar em fazer outra forma de perda de pacote
+
 import socket
 import hashlib
 
 SERVER_IP = 'localhost'
 SERVER_PORT = 9999
-BUFFER = 1024
+BUFFER = 2048
 
 def create_socket():
     try:
@@ -16,25 +20,17 @@ def create_socket():
         print("Socket creation error:" + str(msg))  
 
 def confere_checksum(dados, hash_received):
-    hash_received = hash_received.decode('utf-8')
-    print("hash_received")
-    print(hash_received)
-
     #Inicializa um objeto hashlib com o algoritmo SHA-256
     hasher = hashlib.sha256()
 
     #Atualiza o hasher com os dados de entrada
-    hasher.update(dados)
+    hasher.update(dados.encode('utf-8'))
 
     #Calcula o checksum SHA-256 e retorna em formato hexadecimal
     novo_checksum = hasher.hexdigest()
-    print("Novo CHeck sum")
-    print(novo_checksum)
 
     #retorna True se os checksum forem iguais e False, caso contrário
-    flag = hash_received == novo_checksum
-    print(flag)
-    return flag
+    return hash_received == novo_checksum
     
 
 def main():
@@ -58,23 +54,30 @@ def main():
         # Recebe os dados do servidor em blocos e os imprime
         with open(recvFile, 'wb') as recv_file, open (backupFile, 'wb') as bck_file:
             while True:
-                data, _ = socketUDP.recvfrom(BUFFER)
-                if data.decode("utf-8") == "1":
+                package_received, _ = socketUDP.recvfrom(BUFFER)
+
+                package_received_decoded = package_received.decode("utf-8")
+
+                hash_received = package_received_decoded[ :package_received_decoded.find(";")]
+                num_pack = package_received_decoded[package_received_decoded.find(";") + 1: package_received_decoded.find(">")]
+                data = package_received_decoded[package_received_decoded.find(">") + 1: ]
+
+                print("Num pack recebido: ")
+                print(num_pack)
+
+                if data == "1":
                     print('Arquivo nao encontrado')
                     flag_error = 0
                     break
-                elif data.startswith('ERRO!'.encode('utf-8')):
-                    print(data.decode('utf-8'))
+                elif data.startswith('ERRO!'):
+                    print(data)
                     flag_error = 0
                     break
                 elif not data:
                     print('Arquivo finalizado!')
                     break  # Se não há mais dados, sai do loop
                 
-                bck_file.write(data)
-                hash_received, _ = socketUDP.recvfrom(BUFFER)
-                
-                package_count += 1
+                bck_file.write(data.encode('utf-8'))
 
                 #Opção para o usuário descartar uma parte do arquivo (Simular perda de pacotes)
                 discard = input("Deseja descartar uma parte do arquivo? (s/n): ")
@@ -87,7 +90,7 @@ def main():
 
                 # Verifica o checksum e solicita reenvio em caso de falha
                 if confere_checksum(data, hash_received):
-                    recv_file.write(data)
+                    recv_file.write(data.encode('utf-8'))
                     print(f'Pacote {package_count} enviado!')
                     check = 'OK'.encode('utf-8')
                 else:
