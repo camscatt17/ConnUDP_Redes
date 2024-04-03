@@ -3,7 +3,7 @@ import socket
 import hashlib
 import os
 
-HOST = '0.0.0.0'
+HOST = '0.0.0.0' #Escuta interna
 PORT = 9999
 
 BUFFER = 1024
@@ -36,8 +36,7 @@ def get_commands(data, adress):
 
     if dataString.startswith('GET'):
         fileName = dataString[4:]
-        packetNumber = 0
-        send_file(fileName, adress, packetNumber)
+        send_file(fileName, adress)
 
 def checksumSHA256(data):
     #Inicializa um objeto hashlib com o algoritmo SHA-256
@@ -51,7 +50,7 @@ def checksumSHA256(data):
     return checksum
     
 #Envia arquivo solicitado pelo cliente
-def send_file(fileName, adress, packetNumber):
+def send_file(fileName, adress):
     packge_num = 0
 
     if not os.path.isfile(fileName):
@@ -60,7 +59,7 @@ def send_file(fileName, adress, packetNumber):
     else:
         try:
             with open(fileName, 'rb') as f:
-                while data := f.read(BUFFER):
+                while data := f.read(BUFFER): #Vai ler o arquivo com o tamanho especificado em Buffer
                     packge_num += 1
 
                     # Calcula checksum com SHA-256
@@ -76,9 +75,6 @@ def send_file(fileName, adress, packetNumber):
                         if check == 'NOK':
                             print('NOK recebido. Reenviando parte do arquivo.')
                     
-                    # Incrementa o número do pacote para o próximo
-                    packetNumber += 1
-
         #Se o arquivo não existir
         except FileNotFoundError as msg:
             print("Deu algum error:" + str(msg + "\n"))

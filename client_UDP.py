@@ -6,7 +6,7 @@
 import socket
 import hashlib
 
-SERVER_IP = 'localhost'
+SERVER_IP = '192.168.15.108'
 SERVER_PORT = 9999
 BUFFER = 2048
 
